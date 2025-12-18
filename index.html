@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>租房信息管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+        overflow-x: hidden;
+        min-height: 100vh;
+      }
+
+      .header {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+      }
+
+      .help-btn {
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease, background-color 0.2s ease;
+      }
+
+      .help-btn:hover {
+        background-color: #1976d2;
+        transform: scale(1.05);
+      }
+
+      .help-dropdown {
+        position: absolute;
+        top: 50px;
+        right: 0;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        width: 250px;
+        padding: 15px;
+        display: none;
+        z-index: 1001;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+
+      .help-dropdown.show {
+        display: block;
+        animation: fadeInSlideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      @keyframes fadeInSlideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .help-content h3 {
+        margin-top: 0;
+        color: #1976d2;
+        font-weight: 600;
+      }
+
+      .help-content ul {
+        padding-left: 20px;
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .add-btn-container {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 900;
+      }
+
+      .add-btn {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease, background-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .add-btn:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      }
+
+      .export-import-container {
+        position: fixed;
+        top: 80px;
+        left: 20px;
+        z-index: 900;
+        display: flex;
+        gap: 10px;
+      }
+
+      .export-btn,
+      .import-btn {
+        background-color: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s ease, background-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .export-btn:hover,
+      .import-btn:hover {
+        background-color: #f57c00;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 140px auto 40px;
+        padding: 0 20px 20px;
+        overflow-x: hidden;
+      }
+
+      .add-form {
+        background-color: white;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        display: none;
+        animation: slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+
+      .add-form.active {
+        display: block;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea,
+      input[type="file"] {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 15px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #2196f3;
+        box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+      }
+
+      .submit-btn,
+      .cancel-btn {
+        background-color: #4caf50;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-right: 10px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, transform 0.15s ease;
+      }
+
+      .submit-btn:hover {
+        background-color: #45a049;
+        transform: translateY(-1px);
+      }
+
+      .cancel-btn {
+        background-color: #9e9e9e;
+      }
+
+      .cancel-btn:hover {
+        background-color: #888;
+        transform: translateY(-1px);
+      }
+
+      .rental-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        padding: 0;
+        margin: 0;
+      }
+
+      .rental-item {
+        background-color: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.2s ease;
+        display: flex;
+        position: relative;
+        will-change: transform;
+        width: calc(100% - 40px);
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      /* 拖动时轻微放大提示 */
+      .rental-item.dragging-active {
+        transform: scale(1.02);
+        z-index: 10;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      /* 其他卡片移动动画 */
+      .rental-item.moving {
+        transition: transform 0.2s ease;
+      }
+
+      .drag-handle {
+        width: 40px;
+        background-color: #f8f8f8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: move;
+        user-select: none;
+        color: #ccc;
+        font-size: 20px;
+        padding: 16px 0;
+      }
+
+      .item-content {
+        flex: 1;
+        padding: 16px;
+      }
+
+      .item-header {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        position: relative;
+      }
+
+      .item-text {
+        flex: 1;
+        font-size: 16px;
+        color: #333;
+        word-break: break-word;
+        font-weight: 500;
+      }
+
+      .total-price {
+        background-color: #f44336;
+        color: white;
+        border-radius: 12px;
+        padding: 4px 10px;
+        font-size: 14px;
+        font-weight: bold;
+        margin-right: 10px;
+        display: inline-block;
+      }
+
+      .area-tag {
+        border-radius: 12px;
+        padding: 4px 10px;
+        font-size: 14px;
+        font-weight: bold;
+        margin-right: 10px;
+        display: inline-block;
+        color: white;
+      }
+
+      .area-orange {
+        background-color: #ff9800;
+      }
+
+      .area-blue {
+        background-color: #2196f3;
+      }
+
+      .area-green {
+        background-color: #4caf50;
+      }
+
+      .item-thumbnail {
+        width: 70px;
+        height: 70px;
+        object-fit: cover;
+        border-radius: 10px;
+        margin-left: 12px;
+        background-color: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .item-thumbnail:hover {
+        background-color: #e8e8e8;
+      }
+
+      .edit-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background-color: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        display: none;
+        font-weight: 600;
+        transition: opacity 0.2s ease;
+      }
+
+      .item-header:hover .edit-btn {
+        display: block;
+      }
+
+      .details-panel {
+        display: none;
+        padding: 16px 0 0 0;
+        border-top: 1px solid #eee;
+        margin-top: 12px;
+        animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      .details-panel.expanded {
+        display: block;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          max-height: 0;
+        }
+        to {
+          opacity: 1;
+          max-height: 500px;
+        }
+      }
+
+      .expanded-image {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 10px;
+        margin-top: 12px;
+        background-color: #fafafa;
+      }
+
+      .url-link {
+        display: block;
+        color: #1a73e8;
+        text-decoration: none;
+        margin: 12px 0;
+        word-break: break-all;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .url-link:hover {
+        text-decoration: underline;
+      }
+
+      .property-info {
+        margin: 12px 0;
+        padding: 12px;
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+
+      .info-row {
+        display: flex;
+        margin-bottom: 8px;
+      }
+
+      .info-label {
+        font-weight: 600;
+        width: 80px;
+        color: #555;
+      }
+
+      .info-value {
+        flex: 1;
+        color: #333;
+      }
+
+      .action-buttons {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .delete-btn {
+        background-color: #f44336;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        flex: 1;
+        transition: background-color 0.2s ease;
+      }
+
+      .delete-btn:hover {
+        background-color: #d32f2f;
+      }
+
+      .upload-btn {
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        flex: 1;
+        transition: background-color 0.2s ease;
+      }
+
+      .upload-btn:hover {
+        background-color: #1976d2;
+      }
+
+      .hidden-file-input {
+        display: none;
+      }
+
+      .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        color: #666;
+        transition: all 0.2s ease;
+        margin: 10px 0;
+      }
+
+      .drop-zone.active {
+        border-color: #2196f3;
+        background-color: #f0f8ff;
+      }
+
+      .drop-zone p {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      /* 拖拽虚像样式 */
+      .dragging-ghost {
+        position: fixed;
+        z-index: 2000;
+        pointer-events: none;
+        opacity: 0.92;
+        transform-origin: center;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        border-radius: 16px;
+        will-change: transform;
+        width: calc(100% - 40px);
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      /* 占位符用于挤开其他卡片 */
+      .placeholder {
+        height: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* 毛玻璃覆盖层 */
+      .edit-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .edit-form-modal {
+        background-color: white;
+        padding: 20px;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 600px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        animation: slideInUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(-20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .close-edit-form {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #999;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+      }
+
+      .close-edit-form:hover {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>租房信息管理系统</h1>
+    <button id="add-btn">+ 添加租房信息</button>
+    <button id="export-btn">导出数据</button>
+    <button id="import-btn">导入数据</button>
+
+    <div
+      id="form-container"
+      style="
+        display: none;
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #999;
+      "
+    >
+      <h3 id="form-title">添加租房信息</h3>
+      <input type="hidden" id="record-id" />
+      <label>租房网址: <input type="url" id="url" required /></label><br />
+      <label>显示标题 (可选): <input type="text" id="title" /></label><br />
+      <label>房屋特点 (可选): <textarea id="features"></textarea></label><br />
+      <label>平米数: <input type="number" id="area" /></label><br />
+      <label
+        >车位:
+        <select id="parking">
+          <option value="">请选择</option>
+          <option value="true">有</option>
+          <option value="false">无</option>
+        </select></label
+      ><br />
+      <label
+        >月租 (元): <input type="number" id="monthly_rent" required /></label
+      ><br />
+      <label>物业费 (元): <input type="number" id="property_fee" /></label
+      ><br />
+      <label
+        >缩略图上传:
+        <input type="file" id="thumbnail" accept="image/*" />
+        <div id="thumbnail-preview"></div> </label
+      ><br />
+      <button id="save-btn">保存</button>
+      <button id="cancel-btn">取消</button>
+    </div>
+
+    <div id="rentals-list"></div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
